@@ -1,9 +1,0 @@
-{
-	"development" : {
-	    "url" : "mongodb://localhost/guess_that_song_dev",
-		"client_id" : "7fe7813d6e554d069603f673f12fdc79",
-		"client_secret" : "27c8974804e74cd48e789f4f2182a319",
-		"redirect_uri" : "localhost:8000/spotify_login"
-	},
-	"production" : {}
-}

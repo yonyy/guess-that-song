@@ -1,0 +1,9 @@
+{
+	"development" : {
+	    "url" : "mongodb://localhost/guess_that_song_dev",
+		"client_id" : "",	// TODO
+		"client_secret" : "",	// TODO
+		"redirect_uri" : "localhost:8000/spotify_login"
+	},
+	"production" : {}
+}

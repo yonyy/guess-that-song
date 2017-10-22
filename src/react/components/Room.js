@@ -1,17 +1,23 @@
 const React = require('react');
 const PropTypes = require('prop-types');
+const _ = require('lodash');
 const { Box, Toast } = require('grommet');
-//const { Link } = require('react-router-dom');
+const { Link } = require('react-router-dom');
 const { gql, graphql, compose } = require('react-apollo');
-var env = process.env.NODE_ENV || 'development';
+const SpotifyWebApi = require('spotify-web-api-js');
+const env = process.env.NODE_ENV || 'development';
 const { client_id, client_secret } = require('../../../config/config')[env];
 const spotify = require('./spotify/spotify');
 const urlparser = require('./utils/urlparser');
-const SpotifyWebApi = require('spotify-web-api-js');
+const { Loading } = require('./utils/Loading');
 const spotifyApi = new SpotifyWebApi({
     clientId: client_id,
     clientSecret: client_secret
 });
+const PLAYLIST_LIMIT = 5;
+const MILLISECONDS = 1000;
+const EXPIRES_IN = 3600;
+const TRACK_LIMIT = 5;
 
 class Room extends React.Component {
     constructor(props) {
@@ -20,8 +26,11 @@ class Room extends React.Component {
         this.stopRefresh = this.stopRefresh.bind(this);
         this.loadData = this.loadData.bind(this);
         this.getPlaylist = this.getPlaylist.bind(this);
+        this.grabTracks = this.grabTracks.bind(this);
+        this.grabTrack = this.grabTrack.bind(this);
+        this.alertNewAccessToken = this.alertNewAccessToken.bind(this);
 
-        this.state = { tracks: null };
+        this.state = { playlist: null, tracks: null, track: null };
     }
 
     loadData(q) {
@@ -30,29 +39,50 @@ class Room extends React.Component {
         });
     }
 
+    alertNewAccessToken(err, res) {
+        if (err) { console.error(err); }
+        else { console.info(res.access_token); }
+    }
+
     getAccessToken(cb) {
-        spotify.getAccessToken((err, { access_token, expires_in }) => {
-            this.access_token = access_token;
-            spotifyApi.setAccessToken(access_token);
-            this.timeout_id = window.setTimeout(this.getAccessToken, expires_in*10);
-            if (cb) { cb(); }
+        spotify.getAccessToken((err, res) => {
+            if (res) {
+                let { access_token } = res;
+                this.access_token = access_token;
+                spotifyApi.setAccessToken(access_token);
+            }
+
+            this.timeout_id = window.setTimeout(this.getAccessToken,
+                res.expires_in * MILLISECONDS || EXPIRES_IN * MILLISECONDS, this.alertNewAccessToken);
+            if (cb) { cb(err, res); }
         });
     }
 
     getPlaylist(q) {
-        spotifyApi.searchPlaylists(q, {limit: 2})
+        spotifyApi.searchPlaylists(q, {limit: PLAYLIST_LIMIT})
             .then(data => {
                 let { playlists: { items } } = data;
-                let { id } = items[1];
-                let url = urlparser.parse(items[1].href, [{key: 'owner_id', index: 3}, {key: 'playlist_id', index: 5}]);
-                spotifyApi.getPlaylistTracks(url.owner_id, url.playlist_id)
+                let playlist = _.sample(items);
+                let url = urlparser.parse(playlist.href, [{key: 'owner_id', index: 3}, {key: 'playlist_id', index: 5}]);
+                spotifyApi.getPlaylistTracks(url.owner_id, url.playlist_id, {offset: 50, limit: 50})
                     .then(data => {
-                        this.setState({ tracks: data });
+                        this.grabTracks(data);
                         console.log(data);
                     });
             }, err => {
                 console.error(err);
             });
+    }
+
+    grabTracks(playlist) {
+        let { items } = playlist;
+        this.tracks = _.map(_.sampleSize(items, TRACK_LIMIT), obj => obj.track);
+        this.grabTrack(this.tracks);
+    }
+
+    grabTrack(tracks) {
+        let track = _.sample(tracks);
+        this.setState({ track });
     }
 
     stopRefresh() {
@@ -65,13 +95,20 @@ class Room extends React.Component {
 
     render() {
         //let { username_id, room_id, type } = this.props.match.params;
-        return (
-            <Box>
-                <Toast status='ok' onClose={(_) => _ }>
-                    Setup Complete
-                </Toast>
-            </Box>
-        );
+        if (!this.state.track) {
+            return (
+                <Loading message="Grabbing tracks"/>
+            );
+        } else {
+            let iframeURI = 'https://open.spotify.com/embed?uri=' + this.state.track.uri;
+            return (
+                <Box justify='center' align='center'>
+                    <Box margin='medium'>
+                        <iframe src={iframeURI} frameBorder='0' allowTransparency='true'></iframe>
+                    </Box>
+                </Box>
+            );
+        }
     }
 }
 

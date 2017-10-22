@@ -16,7 +16,7 @@ class Preference extends React.Component {
             return chunk.map((type, index) => {
                 return (
                     <Box key={index} margin='small'>
-                        <Link to={this.props.location.pathname + '/' + type}>
+                        <Link to={this.props.location.pathname + '/' + type.toString()}>
                             <Button style={{width: 140}} fill key={index} icon={<MusicIcon/>}
                                 label={type} onClick={() => {}}></Button>
                         </Link>

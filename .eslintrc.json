@@ -32,10 +32,8 @@
     "no-unreachable": "error",
     "no-unused-vars": ["error", {
       "vars": "all",
-      "varsIgnorePattern": "[sS]equelize",
       "args": "none"
     }],
     "no-trailing-spaces": "error"
-  },
-  "extends": ["eslint:recommended", "plugin:react/recommended"]
+  }
 }
